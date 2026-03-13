@@ -1083,7 +1083,7 @@ XF86AudioMedia 0xed
 
 # evdev 371 (0x173): no evdev -> QKeyCode mapping (xkb keysym NoSymbol)
 
-# evdev 372 (0x174): no evdev -> QKeyCode mapping (xkb keysym 0x06e5c760)
+# evdev 372 (0x174): no evdev -> QKeyCode mapping (xkb keysym Invalid)
 
 # evdev 373 (0x175): no evdev -> QKeyCode mapping (xkb keysym NoSymbol)
 
