@@ -74,26 +74,39 @@ mkdir -p "$SHELL_FOLDER/output/opensbi"
 
 cd $SHELL_FOLDER/opensbi-1.2
 rm -rf build
+   
+#给make传递参数   
+#CROSS_COMPILE=  ：意思是指定交叉编译工具链前缀
+#PLATFORM=       ：意思是指定编译的平台
 make CROSS_COMPILE=${CROSS_PREFIX}- PLATFORM=quard_star
-cp -r $SHELL_FOLDER/opensbi-1.2/build/platform/quard_star/firmware/*.bin $SHELL_FOLDER/output/opensbi/
+cp -r $SHELL_FOLDER/opensbi-1.2/build/platform/quard_star/firmware/*.bin  $SHELL_FOLDER/output/opensbi/
 
 # 生成sbi.dtb
 cd $SHELL_FOLDER/dts
-dtc -I dts -O dtb -o $SHELL_FOLDER/output/opensbi/quard_star_sbi.dtb quard_star_sbi.dts
+
+#dtc:Device Tree Compiler设备树编译器
+dtc -I dts -O dtb -o $SHELL_FOLDER/output/opensbi/quard_star_sbi.dtb  quard_star_sbi.dts
+#-I dts  :指定输入格式 dts
+#-O dtb  :指定输出格式 dtb
+
 
 # 合成firmware固件
-if [ ! -d "$SHELL_FOLDER/output/fw" ]; then  
-mkdir $SHELL_FOLDER/output/fw
-fi  
+mkdir -p $SHELL_FOLDER/output/fw
 cd $SHELL_FOLDER/output/fw
 rm -rf fw.bin
-# 填充 32K的0
+
+# 生成一个32M的全0固件镜像
 dd of=fw.bin bs=1k count=32k if=/dev/zero   
+
+#下面这部分的要求就是各自不能超了范围，覆盖了其他布局的地方
+
 # # 写入 lowlevel_fw.bin 偏移量地址为 0
 dd of=fw.bin bs=1k conv=notrunc seek=0 if=$SHELL_FOLDER/output/lowlevelboot/lowlevel_fw.bin
+
 # 写入 quard_star_sbi.dtb 地址偏移量为 512K，因此 fdt的地址偏移量为 0x80000
 dd of=fw.bin bs=1k conv=notrunc seek=512 if=$SHELL_FOLDER/output/opensbi/quard_star_sbi.dtb
-# 写入 fw_jump.bin 地址偏移量为 2K*1K= 0x2000000，因此 fw_jump.bin的地址偏移量为  0x2000000
+
+# 写入 fw_jump.bin 地址偏移量为 2K*1K= 0x200000，因此 fw_jump.bin的地址偏移量为  0x200000
 dd of=fw.bin bs=1k conv=notrunc seek=2k if=$SHELL_FOLDER/output/opensbi/fw_jump.bin
 
 
