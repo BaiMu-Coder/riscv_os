@@ -109,7 +109,7 @@ int fdt_parse_compat_addr(void *fdt, uint64_t *addr,
 
 static inline void *fdt_get_address(void)
 {
-	return (void *)root.next_arg1;
+	return sbi_scratch_thishart_arg1_ptr();
 }
 
 #endif /* __FDT_HELPER_H__ */

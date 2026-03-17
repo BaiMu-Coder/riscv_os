@@ -17,26 +17,32 @@
 #include <sbi_utils/fdt/fdt_domain.h>
 #include <sbi_utils/fdt/fdt_helper.h>
 
+
+// 这个 fdt_iterate_each_domain 函数本身并不负责去读取你设备树里的 possible-harts 或者 regions 的具体数值。
+// 它的工作就像是一个“引路人”或者“包工头”：它只负责在庞大的设备树中，精确地把一个个 Domain（安全域）节点找出来，然后交接给别人去处理。
 int fdt_iterate_each_domain(void *fdt, void *opaque,
 			    int (*fn)(void *fdt, int domain_offset,
 				       void *opaque))
 {
 	int rc, doffset, poffset;
 
-	if (!fdt || !fn)
+		
+	if (!fdt || !fn)   
 		return SBI_EINVAL;
 
 	poffset = fdt_path_offset(fdt, "/chosen");
 	if (poffset < 0)
 		return 0;
+
+	//在上一步找到的 /chosen 节点范围内，搜索哪个节点的 compatible 属性等于 "opensbi,domain,config"。
 	poffset = fdt_node_offset_by_compatible(fdt, poffset,
 						"opensbi,domain,config");
 	if (poffset < 0)
 		return 0;
 
+   //去遍历里面的每一个子节点
 	fdt_for_each_subnode(doffset, fdt, poffset) {
-		if (fdt_node_check_compatible(fdt, doffset,
-					      "opensbi,domain,instance"))
+		if (fdt_node_check_compatible(fdt, doffset,"opensbi,domain,instance")) //只招"opensbi,domain,instance"类型的，其他的continue
 			continue;
 
 		rc = fn(fdt, doffset, opaque);
@@ -271,6 +277,7 @@ static int __fdt_parse_region(void *fdt, int domain_offset,
 	return 0;
 }
 
+// 遍历 /chosen/opensbi-domains 下面每个 domain 节点时，对每个节点调用一次这个函数。
 static int __fdt_parse_domain(void *fdt, int domain_offset, void *opaque)
 {
 	u32 val32;

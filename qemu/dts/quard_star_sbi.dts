@@ -7,9 +7,86 @@
         compatible = "riscv-quard-star";
         model = "riscv-quard-star,qemu";
 
-        chosen {
-                stdout-path = "/soc/uart0@10000000";
-        };
+    chosen {
+		stdout-path = "/soc/uart0@10000000";
+
+		opensbi-domains {  /* 定义opensbi-domains描述节点 */
+		    compatible = "opensbi,domain,config"; /* 节点名称 */
+
+            tmem: tmem {   /* 定义内存节点 */
+                compatible = "opensbi,domain,memregion";  /* 节点名称 */
+                base = <0x0 0xb0000000>; /* 起始地址注意64位地址哦 */
+                order = <28>; /* 内存大小即size=2^28 */
+            };
+
+            tuart: tuart {  /* 定义mmio节点 */
+                compatible = "opensbi,domain,memregion";  /* 节点名称 */
+                base = <0x0 0x10002000>; /* 起始地址 */
+                order = <8>; /* size=2^8 */
+                mmio;  /* mmio属性 */
+                devices = <&uart2>; /* 关联到设备节点上 */
+            };
+
+		    allmem: allmem { /* 定义内存节点，这个节点保护所有地址 */
+		        compatible = "opensbi,domain,memregion";
+		        base = <0x0 0x0>;
+		        order = <64>;
+		    };
+
+            tdomain: trusted-domain { /* 定义domian节点 */
+                compatible = "opensbi,domain,instance";  /* 节点名称 */
+                possible-harts = <&cpu7>; /* dumian中允许使用的cpu core */
+                regions = <&tmem 0x7>, <&tuart 0x7>, <&allmem 0x7>;/* 各个内存/mmio区域的权限，3bit读写运行权限 0x7拥有全部权限 */
+                boot-hart = <&cpu7>; /* domian中用于boot的core */
+                next-arg1 = <0x0 0x00000000>; /* 下级程序的参数 */
+		next-addr = <0x0 0xb0000000>; /* 下级程序的起始地址 */
+		next-mode = <0x0>; /* 下级程序的允许模式 0为U模式，1为S模式 */
+                system-reset-allowed; /* 允许复位 */
+            };
+
+
+
+                /* udomain        :  这是一个标签 (Label)。它就像一个变量名，允许设备树中的其他节点通过 &udomain 这个符号（称为 phandle）来引用这个节点，而不需要写出完整的路径。
+                untrusted-domain  :  这是节点名称 (Node Name)。代表这是一个名为“不受信任的域”的设备节点。
+                { ... };          : 大括号内包含了该节点的所有属性（Properties）。*/
+	        udomain: untrusted-domain {
+		compatible = "opensbi,domain,instance";  /*设备类型，匹配用的*/
+		possible-harts = <&cpu0 &cpu1 &cpu2 &cpu3 &cpu4 &cpu5 &cpu6>;   
+                 /* 语法: < > 表示这是一个包含多个单元（cells）或引用的数组。&:表示对其他节点的引用（phandle）。
+                含义: possible-harts 定义了哪些 hart,可以被分配到这个域中。这里它引用了名为 cpu0 到 cpu6 的 7 个 CPU 核心*/
+		
+                regions = <&tmem 0x0>, <&tuart 0x0>, <&allmem 0x7>; 
+                /*语法: 这是由多个组合构成的列表，每个组合用逗号 , 隔开。每个组合的格式是 <内存/设备节点的引用 访问权限掩码>。
+                含义: 定义了这个域可以访问的内存或 MMIO（外设）区域，以及访问权限。
+                <&tmem 0x0>  : 引用了 tmem 区域。权限 0x0 通常表示无权限（不可读、不可写、不可执行），即将其隔离出该域。
+                <&tuart 0x0> : 引用了 tuart（可能是某个串口），同样 0x0 表示在这个域中无权访问。
+                <&allmem 0x7>: 引用了 allmem（可能是主存）。权限 0x7 是一个位掩码（Bitmask），在 OpenSBI 中：1代表可读(R)，2代表可写(W)，4代表可执行(X)。1 + 2 + 4 = 7 (0x7)，表示该域对这块内存拥有完全的读/写/执行权限。*/
+                
+		boot-hart = <&cpu0>;
+                /*含义: 指定这个域的主启动 CPU（Boot CPU）。当这个域启动时，代码将首先在 cpu0 这个核心上运行。*/
+
+		next-arg1 = <0x0 0x82200000>;
+		next-addr = <0x0 0x82000000>;
+                /*语法: <0x0 0x82...>。在 64 位系统中，物理地址通常超过 32 位。设备树中的基础数据单元（cell）是 32 位的。因此，一个 64 位的值会被拆分为两个 32 位的数字：<高32位 低32位>。
+                含义:
+                next-addr: 这是该域启动的下一级负载（Payload，如 Linux 内核或 U-Boot）的入口物理地址。这里是 0x0000000082000000。
+                next-arg1: 这是传递给下一级负载的第一个参数的物理地址。在 RISC-V Linux 启动标准中，寄存器 a1 通常用于传递设备树 Blob (DTB) 的地址。这里指定 DTB 存放在 0x0000000082200000。*/
+
+		next-mode = <0x1>;
+                /*含义: 指定跳转到下一级负载时 CPU 应处的特权模式 (Privilege Mode)。
+                在 RISC-V 中：0x0 是 User (U-mode)，0x1 是 Supervisor (S-mode)，0x3 是 Machine (M-mode)。=
+                <0x1> 表示 OpenSBI（运行在 M-mode）在完成初始化后，将把权限降级并跳转到 S-mode (Supervisor mode) 运行下一级操作系统（如 Linux）。*/
+
+
+		system-reset-allowed;
+                /*语法: 这是一个布尔属性 (Boolean Property)。设备树中，如果只写了属性名而没有赋值，就代表其值为 True（真）。
+                含义: 允许在这个 untrusted-domain 内部运行的操作系统触发整个系统的全局复位（重启设备），而不仅仅是重启该域自身。*/
+
+		};
+		
+                };
+	};
+
 
         memory@80000000 {
                 device_type = "memory";
@@ -29,6 +106,7 @@
                         compatible = "riscv";
                         riscv,isa = "rv64imafdcsu";
                         mmu-type = "riscv,sv48";
+                        opensbi-domain = <&udomain>;
 
                         interrupt-controller {
                                 #interrupt-cells = <0x1>;
@@ -46,6 +124,7 @@
                         compatible = "riscv";
                         riscv,isa = "rv64imafdcsu";
                         mmu-type = "riscv,sv48";
+                        opensbi-domain = <&udomain>;
 
                         interrupt-controller {
                                 #interrupt-cells = <0x1>;
@@ -63,6 +142,7 @@
                         compatible = "riscv";
                         riscv,isa = "rv64imafdcsu";
                         mmu-type = "riscv,sv48";
+                        opensbi-domain = <&udomain>;
 
                         interrupt-controller {
                                 #interrupt-cells = <0x1>;
@@ -80,6 +160,7 @@
                         compatible = "riscv";
                         riscv,isa = "rv64imafdcsu";
                         mmu-type = "riscv,sv48";
+                        opensbi-domain = <&udomain>;
 
                         interrupt-controller {
                                 #interrupt-cells = <0x1>;
@@ -97,6 +178,7 @@
                         compatible = "riscv";
                         riscv,isa = "rv64imafdcsu";
                         mmu-type = "riscv,sv48";
+                        opensbi-domain = <&udomain>;
 
                         interrupt-controller {
                                 #interrupt-cells = <0x1>;
@@ -114,6 +196,7 @@
                         compatible = "riscv";
                         riscv,isa = "rv64imafdcsu";
                         mmu-type = "riscv,sv48";
+                        opensbi-domain = <&udomain>;
 
                         interrupt-controller {
                                 #interrupt-cells = <0x1>;
@@ -131,6 +214,7 @@
                         compatible = "riscv";
                         riscv,isa = "rv64imafdcsu";
                         mmu-type = "riscv,sv48";
+                        opensbi-domain = <&udomain>;
 
                         interrupt-controller {
                                 #interrupt-cells = <0x1>;
@@ -148,6 +232,7 @@
                         compatible = "riscv";
                         riscv,isa = "rv64imafdcsu";
                         mmu-type = "riscv,sv48";
+                        opensbi-domain = <&tdomain>;
 
                         interrupt-controller {
                                 #interrupt-cells = <0x1>;
@@ -243,4 +328,8 @@
                         compatible = "riscv,clint0";
                 };
         };
+
+
+
+
 };

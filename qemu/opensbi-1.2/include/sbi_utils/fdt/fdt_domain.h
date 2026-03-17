@@ -13,6 +13,7 @@
 
 #include <sbi/sbi_types.h>
 
+
 #ifdef CONFIG_FDT_DOMAIN
 
 struct sbi_domain;

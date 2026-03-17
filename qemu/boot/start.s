@@ -43,11 +43,20 @@ _start:
     load_data a0,a1,a2
 
         //load qemu_sbi.dtb
-        //[0x20080000:0x20100000] --> [0x82200000:0x82280000]
+        //[0x20080000:0x20200000] --> [0x82200000:0x82380000]
     li  a0,0x20080000
     li  a1,0x82200000
-    li  a2,0x82280000
+    li  a2,0x82380000
     load_data a0,a1,a2
+
+
+       //load trusted_fw.bin
+       //[0x20400000:0x20800000] --> [0xb0000000:0xb0400000]
+    li a0,0x20400000
+    li a1,0xb0000000
+    li a2,0xb0400000
+    load_data a0,a1,a2
+
 
     csrr a0, mhartid    
     beqz  a0,_no_wait

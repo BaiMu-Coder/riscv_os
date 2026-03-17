@@ -44,10 +44,8 @@ fw_platform_init() 函数的返回值是 （DTB设备树）的最新的内存位
 
 
 // OpenSBI 一启动，就会立刻调用这个 fw_platform_init()。   
-//firmware/fw_base.S这个文件里面硬编码了   call fw_platform_init   所以才会调用这个函数
-unsigned long fw_platform_init(unsigned long arg0, unsigned long arg1,
-				unsigned long arg2, unsigned long arg3,
-				unsigned long arg4)
+// firmware/fw_base.S这个文件里面硬编码了   call fw_platform_init   所以才会调用这个函数
+unsigned long fw_platform_init(unsigned long arg0, unsigned long arg1,unsigned long arg2, unsigned long arg3,unsigned long arg4)
 {
 	const char *model;
 	void *fdt = (void *)arg1;
@@ -73,6 +71,7 @@ unsigned long fw_platform_init(unsigned long arg0, unsigned long arg1,
 #define fdt_for_each_subnode(node, fdt, parent)		\
 	for(node = fdt_first_subnode(fdt, parent); node >= 0; node = fdt_next_subnode(fdt, node))
 */
+
 //遍历每个CPU子节点，解析hartid
 //fdt_first_subnode获取设备树parent的第一个子节点       fdt_next_subnode根据当前节点去找下一个紧挨的节点，找不到返回负值
 	fdt_for_each_subnode(cpu_offset, fdt, cpus_offset) {
@@ -156,6 +155,7 @@ static int quard_star_domains_init(void)
 
 static int quard_star_pmu_init(void)
 {
+
 	return fdt_pmu_setup(fdt_get_address());
 }
 
