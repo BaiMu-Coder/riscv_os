@@ -23,6 +23,9 @@
 #include <sbi_utils/ipi/fdt_ipi.h>
 #include <sbi_utils/reset/fdt_reset.h>
 
+//打印使用
+#include <sbi/sbi_console.h>
+
 
 extern struct sbi_platform platform;
 static u32 quard_star_hart_index2id[SBI_HARTMASK_MAX_BITS] = { 0 };
@@ -115,6 +118,7 @@ static int quard_star_early_init(bool cold_boot)
 // 等它把系统基础环境搭好后，再去唤醒其他核心（Secondary HARTs），其他核心醒来的过程叫热启动。
 static int quard_star_final_init(bool cold_boot)
 {
+
 	void *fdt;
 
 	if (cold_boot)  

@@ -2,7 +2,7 @@
 .globl _start
 	
 _start:
-	li		t0,	10002000   //串口2的地址	
+	li		t0,	0x10002000   //串口2的地 0x10002000
 	li		t1,	'H'
 	sb		t1, 0(t0)
 	li		t1,	'e'

@@ -1,8 +1,15 @@
 # 获取当前脚本文件所在的目录
 SHELL_FOLDER=$(cd "$(dirname "$0")";pwd)
-
+CROSS_PREFIX=riscv64-linux-gnu
 rm -rf output
-cd qemu-8.2.2
+
+
+
+
+#-----------------------------------------------------------------------------------------------------------------------------------------------#
+#----------------------------------------------------------------------编译qemu-----------------------------------------------------------------#
+#-----------------------------------------------------------------------------------------------------------------------------------------------#
+cd ${SHELL_FOLDER}/qemu-8.2.2 || exit 1
 rm -rf build
 
 if [ ! -d "${SHELL_FOLDER}/output/qemu" ]; then 
@@ -16,18 +23,19 @@ fi
 
 make -j$(nproc)
 sudo make install
-cd ..
-
-
-CROSS_PREFIX=riscv64-linux-gnu
 
 
 
 
 
-#----------------------------------------------------trusted_domain--------------------------------------------------------------------------------------------#
+
+
+
+#-----------------------------------------------------------------------------------------------------------------------------------------------#
+#----------------------------------------------------trusted_domain----------------------------------------------------------------------------#
+#-----------------------------------------------------------------------------------------------------------------------------------------------#
 mkdir -p ${SHELL_FOLDER}/output/trusted_domain
-cd ${SHELL_FOLDER}/trusted_domain
+cd ${SHELL_FOLDER}/trusted_domain || exit 1
 ${CROSS_PREFIX}-gcc -x assembler-with-cpp -c startup.s -o ${SHELL_FOLDER}/output/trusted_domain/startup.o
 ${CROSS_PREFIX}-gcc -nostartfiles -T./startup.ld -Wl,-Map=${SHELL_FOLDER}/output/trusted_domain/trusted_fw.map -Wl,--gc-sections ${SHELL_FOLDER}/output/trusted_domain/startup.o -o ${SHELL_FOLDER}/output/trusted_domain/trusted_fw.elf
 ${CROSS_PREFIX}-objcopy -O binary -S ${SHELL_FOLDER}/output/trusted_domain/trusted_fw.elf ${SHELL_FOLDER}/output/trusted_domain/trusted_fw.bin
@@ -38,9 +46,8 @@ ${CROSS_PREFIX}-objdump --source --demangle --disassemble --reloc --wide ${SHELL
 
 
 
-
 #-----------------------------------------------------------------------------------------------------------------------------------------------#
-#-----------------------------------------------------------------编译 lowlevelboot-------------------------------------------------------------#
+#-----------------------------------------------------------------编译lowlevelboot-------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------------------------------#
 mkdir -p "${SHELL_FOLDER}/output/lowlevelboot"
 cd ${SHELL_FOLDER}/boot || exit 1
@@ -64,6 +71,8 @@ ${CROSS_PREFIX}-objcopy -O binary -S ${SHELL_FOLDER}/output/lowlevelboot/lowleve
 
 # 使用gnu工具生成反汇编文件，方便调试分析（当然我们这个代码太简单，不是很需要）
 ${CROSS_PREFIX}-objdump --source --demangle --disassemble --reloc --wide ${SHELL_FOLDER}/output/lowlevelboot/lowlevel_fw.elf > ${SHELL_FOLDER}/output/lowlevelboot/lowlevel_fw.lst
+
+
 
 cd ${SHELL_FOLDER}/output/lowlevelboot
 rm -rf fw.bin
@@ -107,6 +116,24 @@ dtc -I dts -O dtb -o ${SHELL_FOLDER}/output/opensbi/quard_star_sbi.dtb  quard_st
 #-O dtb  :指定输出格式 dtb
 
 
+
+
+
+#-----------------------------------------------------------------------------------------------------------------------------------------------#
+#---------------------------------------------------------------------编译os--------------------------------------------------------------#
+#-----------------------------------------------------------------------------------------------------------------------------------------------#
+cd ${SHELL_FOLDER}/os
+make -j$(nproc)
+
+
+
+
+
+
+
+#-----------------------------------------------------------------------------------------------------------------------------------------------#
+#---------------------------------------------------------------------合成固件--------------------------------------------------------------#
+#-----------------------------------------------------------------------------------------------------------------------------------------------#
 # 合成firmware固件
 mkdir -p ${SHELL_FOLDER}/output/fw
 cd ${SHELL_FOLDER}/output/fw
@@ -114,6 +141,8 @@ rm -rf fw.bin
 
 # 生成一个32M的全0固件镜像
 dd of=fw.bin bs=1k count=32k if=/dev/zero   
+
+
 
 #下面这部分的要求就是各自不能超了范围，覆盖了其他布局的地方
 
@@ -128,6 +157,12 @@ dd of=fw.bin bs=1k conv=notrunc seek=2k if=${SHELL_FOLDER}/output/opensbi/fw_jum
 
 # 写入 trusted_domain.bin 地址偏移量为 1K*4K= 0x400000，因此 trusted_domain.bin的地址偏移量为  0x400000
 dd of=fw.bin bs=1k conv=notrunc seek=4k if=${SHELL_FOLDER}/output/trusted_domain/trusted_fw.bin
+
+# 写入 mysbi.bin 地址偏移量为 1K*8K= 0x800000，因此 mysbi.bin的地址偏移量为  0x800000
+dd of=fw.bin bs=1k conv=notrunc seek=8k if=${SHELL_FOLDER}/os/output/mysbi.bin
+
+
+
 
 
 

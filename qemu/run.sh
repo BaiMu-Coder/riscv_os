@@ -1,7 +1,7 @@
 #!/bin/bash
 export DISPLAY=:0
 SHELL_FOLDER=$(cd "$(dirname "$0")";pwd)
-DEFAULT_VC="1280x720"
+DEFAULT_VC="1280x930"
 
 # 构建参数数组
 QEMU_ARGS=(

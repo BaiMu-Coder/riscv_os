@@ -58,6 +58,15 @@ _start:
     load_data a0,a1,a2
 
 
+       //load mysbi.bin
+       //[0x20800000:0x20c00000] --> [0x80200000:0x80600000]
+    li a0,0x20800000
+    li a1,0x80200000
+    li a2,0x80600000
+    load_data a0,a1,a2
+
+
+
     csrr a0, mhartid    
     beqz  a0,_no_wait
     loop  0x1000
